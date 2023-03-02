@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "render-selected-strips"
+version = "1.0.0"
+description = "Quickly render selected sequencer strips"
+authors = ["Tristan Weis <mail@tristanweis.com>"]
+readme = "README.md"
+license = "GPL-3.0-or-later"
+packages = [{include = "render_selected_strips"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.1.0"
+flake8 = "^6.0.0"
+fake-bpy-module-latest = "^20230302"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
