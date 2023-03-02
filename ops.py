@@ -1,4 +1,8 @@
-from typing import Literal
+from __future__ import annotations
+from typing import Literal, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bpy.types import Context, Event
 
 import bpy
 from . import utils
@@ -25,7 +29,7 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(bpy.types.Operator):
     directory: bpy.props.StringProperty(name="Directory", subtype="DIR_PATH")
 
     @classmethod
-    def poll(cls, context: bpy.types.Context) -> bool:
+    def poll(cls, context: Context) -> bool:
         """
         Allow operator to run if any strips are selected.
 
@@ -40,11 +44,7 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(bpy.types.Operator):
 
         return bool(context.selected_sequences)
 
-    def invoke(
-        self,
-        context: bpy.types.Context,
-        event: bpy.types.Event,
-    ) -> OPERATOR_RETURN_ITEMS:
+    def invoke(self, context: Context, event: Event) -> OPERATOR_RETURN_ITEMS:
         """
         Start folder selection.
 
@@ -59,7 +59,7 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(bpy.types.Operator):
 
         return {"RUNNING_MODAL"}
 
-    def execute(self, context: bpy.types.Context) -> OPERATOR_RETURN_ITEMS:
+    def execute(self, context: Context) -> OPERATOR_RETURN_ITEMS:
         """
         Back up used scene properties, export sequences and restore backup.
 
