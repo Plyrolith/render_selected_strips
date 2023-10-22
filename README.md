@@ -12,3 +12,10 @@ Blender add-on for quickly rendering selected sequencer strips.
 - Open the *Strip* menu and select the *Render Selected Strips* operator at the bottom
 - Navigate to your destination folder
 - Confirm
+
+## Additional Tools
+The sequencer's *Add* menu is extended with two addtional operators to import multiple files at once:
+- Stills
+- Movies
+
+Newly added strips will be placed at the current frame, one after another in alphabetical order.
