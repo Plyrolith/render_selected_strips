@@ -52,77 +52,6 @@ use_fit_prop = BoolProperty(
 ########################################################################################
 
 
-class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
-    """Add multiple images as still image strips to the sequencer"""
-
-    bl_idname = "sequencer.add_still_strips"
-    bl_label = "Add Still Strips"
-    bl_options = {"REGISTER", "UNDO"}
-
-    channel: channel_prop
-    directory: directory_prop
-    duration: IntProperty(
-        name="Frame Duration",
-        description="Length of each created image strip",
-        default=24,
-        min=1,
-    )
-    files: files_prop
-    filter_glob: StringProperty(
-        default=f"*{';*'.join(bpy.path.extensions_image)}",
-        options={"HIDDEN"},
-    )
-    use_fit: use_fit_prop
-
-    @classmethod
-    def poll(cls, context) -> bool:
-        """
-        Allow operator to run if the active scene has a sequencer.
-
-        Parameters:
-            - context (Context)
-
-        Returns:
-            - bool: Whether the active scene has a sequencer or not
-        """
-        return context.scene.sequence_editor
-
-    def execute(self, context: Context) -> OPERATOR_RETURN_ITEMS:
-        """
-        Add multiple images as a sequence of image strips to the sequencer.
-
-        Parameters:
-            - context (Context)
-
-        Returns:
-            - set[str]: CANCELLED, FINISHED, INTERFACE, PASS_THROUGH, RUNNING_MODAL
-        """
-        if TYPE_CHECKING:
-            file: OperatorFileListElement
-            sequence: ImageSequence
-
-        sequence_editor = context.scene.sequence_editor
-
-        current_frame = context.scene.frame_current
-        for file in self.files:
-            filepath = Path(self.directory, file.name).resolve()
-            if not filepath.is_file():
-                continue
-
-            print(f"Adding as still: {filepath}")
-            sequence = sequence_editor.sequences.new_image(
-                name=filepath.name,
-                filepath=filepath.as_posix(),
-                channel=self.channel,
-                frame_start=current_frame,
-                fit_method="FIT" if self.use_fit else "ORIGINAL",
-            )
-            sequence.frame_final_duration = self.duration
-            current_frame += self.duration
-
-        return {"FINISHED"}
-
-
 class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
     """Add multiple videos as a sequence of movie strips to the sequencer"""
 
@@ -195,6 +124,77 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
                     frame_start=current_frame,
                 )
             current_frame = sequence.frame_final_end
+
+        return {"FINISHED"}
+
+
+class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
+    """Add multiple images as still image strips to the sequencer"""
+
+    bl_idname = "sequencer.add_still_strips"
+    bl_label = "Add Still Strips"
+    bl_options = {"REGISTER", "UNDO"}
+
+    channel: channel_prop
+    directory: directory_prop
+    duration: IntProperty(
+        name="Frame Duration",
+        description="Length of each created image strip",
+        default=24,
+        min=1,
+    )
+    files: files_prop
+    filter_glob: StringProperty(
+        default=f"*{';*'.join(bpy.path.extensions_image)}",
+        options={"HIDDEN"},
+    )
+    use_fit: use_fit_prop
+
+    @classmethod
+    def poll(cls, context) -> bool:
+        """
+        Allow operator to run if the active scene has a sequencer.
+
+        Parameters:
+            - context (Context)
+
+        Returns:
+            - bool: Whether the active scene has a sequencer or not
+        """
+        return context.scene.sequence_editor
+
+    def execute(self, context: Context) -> OPERATOR_RETURN_ITEMS:
+        """
+        Add multiple images as a sequence of image strips to the sequencer.
+
+        Parameters:
+            - context (Context)
+
+        Returns:
+            - set[str]: CANCELLED, FINISHED, INTERFACE, PASS_THROUGH, RUNNING_MODAL
+        """
+        if TYPE_CHECKING:
+            file: OperatorFileListElement
+            sequence: ImageSequence
+
+        sequence_editor = context.scene.sequence_editor
+
+        current_frame = context.scene.frame_current
+        for file in self.files:
+            filepath = Path(self.directory, file.name).resolve()
+            if not filepath.is_file():
+                continue
+
+            print(f"Adding as still: {filepath}")
+            sequence = sequence_editor.sequences.new_image(
+                name=filepath.name,
+                filepath=filepath.as_posix(),
+                channel=self.channel,
+                frame_start=current_frame,
+                fit_method="FIT" if self.use_fit else "ORIGINAL",
+            )
+            sequence.frame_final_duration = self.duration
+            current_frame += self.duration
 
         return {"FINISHED"}
 
