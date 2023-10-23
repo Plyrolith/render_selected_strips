@@ -267,4 +267,10 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
         scene.frame_start = frame_start_backup
         scene.render.filepath = filepath_backup
 
+        # Report
+        self.report(
+            {"INFO"},
+            f"Finished rendering {len(context.selected_sequences)} strips",
+        )
+
         return {"FINISHED"}
