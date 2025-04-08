@@ -45,6 +45,11 @@ use_fit_prop = BoolProperty(
     description="Scale each image to fit the format while preserving aspect ratio",
     default=True,
 )
+use_adjust_range = BoolProperty(
+    name="Adjust Range",
+    description="Set the scene range to the newly created strips",
+    default=True,
+)
 
 
 ########################################################################################
@@ -72,6 +77,7 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
         default=True,
     )
     use_fit: use_fit_prop
+    use_adjust_range: use_adjust_range
 
     @classmethod
     def poll(cls, context):
@@ -100,9 +106,10 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
             file: OperatorFileListElement
             sequence: ImageSequence
 
-        sequence_editor = context.scene.sequence_editor
+        scene = context.scene
+        sequence_editor = scene.sequence_editor
 
-        current_frame = context.scene.frame_current
+        current_frame = scene.frame_current
         for file in self.files:
             filepath = Path(self.directory, file.name).resolve()
             if not filepath.is_file():
@@ -124,6 +131,10 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
                     frame_start=current_frame,
                 )
             current_frame = sequence.frame_final_end
+
+        if self.use_adjust_range:
+            scene.frame_start = scene.frame_current
+            scene.frame_end = current_frame
 
         return {"FINISHED"}
 
@@ -149,6 +160,7 @@ class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
         options={"HIDDEN"},
     )
     use_fit: use_fit_prop
+    use_adjust_range: use_adjust_range
 
     @classmethod
     def poll(cls, context) -> bool:
@@ -177,9 +189,10 @@ class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
             file: OperatorFileListElement
             sequence: ImageSequence
 
-        sequence_editor = context.scene.sequence_editor
+        scene = context.scene
+        sequence_editor = scene.sequence_editor
 
-        current_frame = context.scene.frame_current
+        current_frame = scene.frame_current
         for file in self.files:
             filepath = Path(self.directory, file.name).resolve()
             if not filepath.is_file():
@@ -195,6 +208,10 @@ class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
             )
             sequence.frame_final_duration = self.duration
             current_frame += self.duration
+        
+        if self.use_adjust_range:
+            scene.frame_start = scene.frame_current
+            scene.frame_end = current_frame
 
         return {"FINISHED"}
 
