@@ -1,18 +1,3 @@
-bl_info = {
-    "name": "Render Selected Strips",
-    "description": "Quickly render selected sequencer strips",
-    "author": "Tristan Weis",
-    "version": (1, 0, 0),
-    "blender": (3, 4, 1),
-    "location": "Sequencer",
-    "warning": "",
-    "doc_url": "https://github.com/Plyrolith/render_selected_strips",
-    "tracker_url": "https://github.com/Plyrolith/render_selected_strips/issues",
-    "support": "COMMUNITY",
-    "category": "Pipeline",
-}
-
-
 import bpy
 from . import draw, ops
 
