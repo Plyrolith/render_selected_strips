@@ -12,9 +12,8 @@ python = "^3.10"
 
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.1.0"
-flake8 = "^6.0.0"
-fake-bpy-module-latest = "^20230302"
+fake-bpy-module-latest = "^20260731"
+ruff = "^0.16.1"
 
 [build-system]
 requires = ["poetry-core"]
