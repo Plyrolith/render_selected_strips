@@ -6,6 +6,7 @@
   "python.analysis.diagnosticSeverityOverrides": {
     "reportIncompatibleMethodOverride": "none",
     "reportInvalidTypeForm": "none",
+    "reportMissingModuleSource": "none",
     "reportOptionalMemberAccess": "none",
     "reportRedeclaration": "none"
   },
