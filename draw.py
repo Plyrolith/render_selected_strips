@@ -11,8 +11,8 @@ def add_strips(self: Panel, context: Context):
     """
     Draw the operator buttons for adding multiple images and videos.
 
-    Parameters:
-        - context (Context)
+    Args:
+        context (Context)
     """
     layout = self.layout
     layout.separator()
@@ -32,8 +32,8 @@ def render_selected_strips(self: Panel, context: Context):
     """
     Draw the operator button for the sequence editor strip menu.
 
-    Parameters:
-        - context (Context)
+    Args:
+        context (Context)
     """
     layout = self.layout
     layout.separator()

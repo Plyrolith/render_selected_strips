@@ -27,10 +27,9 @@ def render_sequences(sequences: list[Sequence], directory: Path | str | None = N
     Render given sequence stips using their scene's render settings and their names as
     file names.
 
-    Parameters:
-        - sequences (list[Sequence]): Sequences to render
-        - directory (Path | str): Destination folder, use current scene output if none
-          is given
+    Args:
+        sequences (list[Sequence]): Sequences to render
+        directory (Path | str): Destination folder, scene output if none is given
     """
     if TYPE_CHECKING:
         scene: Scene

@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from bpy.types import Context, Event, ImageSequence
+    from bpy.stub_internal.rna_enums import OperatorReturnItems
 
 from pathlib import Path
 
@@ -11,21 +12,6 @@ from bpy.props import BoolProperty, CollectionProperty, IntProperty, StringPrope
 from bpy.types import OperatorFileListElement, Operator
 from bpy_extras.io_utils import ImportHelper
 from . import utils
-
-
-OPERATOR_RETURN_ITEMS = set[
-    Literal[
-        "CANCELLED",
-        "FINISHED",
-        "INTERFACE",
-        "PASS_THROUGH",
-        "RUNNING_MODAL",
-    ]
-]
-
-########################################################################################
-# Shared properties
-########################################################################################
 
 
 channel_prop = IntProperty(
@@ -50,11 +36,6 @@ use_adjust_range = BoolProperty(
     description="Set the scene range to the newly created strips",
     default=True,
 )
-
-
-########################################################################################
-# Strip import operators
-########################################################################################
 
 
 class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
@@ -84,23 +65,23 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
         """
         Allow operator to run if the active scene has a sequencer.
 
-        Parameters:
-            - context (Context)
+        Args:
+            context (Context)
 
         Returns:
-            - bool: Whether the active scene has a sequencer or not
+            bool: Whether the active scene has a sequencer or not
         """
         return context.scene.sequence_editor
 
-    def execute(self, context: Context) -> OPERATOR_RETURN_ITEMS:
+    def execute(self, context: Context) -> set[OperatorReturnItems]:
         """
         Add multiple videos as a sequence of movie strips to the sequencer.
 
-        Parameters:
-            - context (Context)
+        Args:
+            context (Context)
 
         Returns:
-            - set[str]: CANCELLED, FINISHED, INTERFACE, PASS_THROUGH, RUNNING_MODAL
+            set[OperatorReturnItems]
         """
         if TYPE_CHECKING:
             file: OperatorFileListElement
@@ -167,23 +148,23 @@ class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
         """
         Allow operator to run if the active scene has a sequencer.
 
-        Parameters:
-            - context (Context)
+        Args:
+            context (Context)
 
         Returns:
-            - bool: Whether the active scene has a sequencer or not
+            bool: Whether the active scene has a sequencer or not
         """
         return context.scene.sequence_editor
 
-    def execute(self, context: Context) -> OPERATOR_RETURN_ITEMS:
+    def execute(self, context: Context) -> set[OperatorReturnItems]:
         """
         Add multiple images as a sequence of image strips to the sequencer.
 
-        Parameters:
-            - context (Context)
+        Args:
+            context (Context)
 
         Returns:
-            - set[str]: CANCELLED, FINISHED, INTERFACE, PASS_THROUGH, RUNNING_MODAL
+            set[OperatorReturnItems]
         """
         if TYPE_CHECKING:
             file: OperatorFileListElement
@@ -208,7 +189,7 @@ class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
             )
             sequence.frame_final_duration = self.duration
             current_frame += self.duration
-        
+
         if self.use_adjust_range:
             scene.frame_start = scene.frame_current
             scene.frame_end = current_frame
@@ -230,41 +211,41 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
         """
         Allow operator to run if any strips are selected.
 
-        Parameters:
-            - context (Context)
+        Args:
+            context (Context)
 
         Returns:
-            - bool: Whether strips are selected or not
+            bool: Whether strips are selected or not
         """
         if context.area.ui_type != "SEQUENCE_EDITOR":
             return False
 
         return bool(context.selected_sequences)
 
-    def invoke(self, context: Context, event: Event) -> OPERATOR_RETURN_ITEMS:
+    def invoke(self, context: Context, event: Event) -> set[OperatorReturnItems]:
         """
         Start folder selection.
 
-        Parameters:
-            - context (Context)
-            - event (Event)
+        Args:
+            context (Context)
+            event (Event)
 
         Returns:
-            - set[str]: CANCELLED, FINISHED, INTERFACE, PASS_THROUGH, RUNNING_MODAL
+            set[OperatorReturnItems]
         """
         context.window_manager.fileselect_add(self)
 
         return {"RUNNING_MODAL"}
 
-    def execute(self, context: Context) -> OPERATOR_RETURN_ITEMS:
+    def execute(self, context: Context) -> set[OperatorReturnItems]:
         """
         Back up used scene properties, export sequences and restore backup.
 
-        Parameters:
-            - context (Context)
+        Args:
+            context (Context)
 
         Returns:
-            - set[str]: CANCELLED, FINISHED, INTERFACE, PASS_THROUGH, RUNNING_MODAL
+            set[OperatorReturnItems]
         """
         scene = context.scene
 
