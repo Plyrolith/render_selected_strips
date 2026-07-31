@@ -1,18 +1,19 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from bpy.types import Context, Event, ImageSequence
     from bpy.stub_internal.rna_enums import OperatorReturnItems
+    from bpy.types import Area, Context, Event, Scene, Strip, WindowManager
 
 from pathlib import Path
 
 import bpy
 from bpy.props import BoolProperty, CollectionProperty, IntProperty, StringProperty
-from bpy.types import OperatorFileListElement, Operator
+from bpy.types import Operator, OperatorFileListElement
 from bpy_extras.io_utils import ImportHelper
-from . import utils
 
+from . import utils
 
 channel_prop = IntProperty(
     name="Channel",
@@ -49,7 +50,7 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
     directory: directory_prop
     files: files_prop
     filter_glob: StringProperty(
-        default=f"*{';*'.join(bpy.path.extensions_movie)}",
+        default=f"*{';*'.join(bpy.path.extensions_movie)}",  # type: ignore
         options={"HIDDEN"},
     )
     import_audio: BoolProperty(
@@ -61,7 +62,7 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
     use_adjust_range: use_adjust_range
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, context) -> bool:
         """
         Allow operator to run if the active scene has a sequencer.
 
@@ -71,7 +72,11 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
         Returns:
             bool: Whether the active scene has a sequencer or not
         """
-        return context.scene.sequence_editor
+        if TYPE_CHECKING:
+            scene: Scene
+
+        scene = context.scene
+        return bool(scene.sequence_editor)
 
     def execute(self, context: Context) -> set[OperatorReturnItems]:
         """
@@ -85,7 +90,8 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
         """
         if TYPE_CHECKING:
             file: OperatorFileListElement
-            sequence: ImageSequence
+            scene: Scene
+            strip: Strip
 
         scene = context.scene
         sequence_editor = scene.sequence_editor
@@ -97,7 +103,7 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
                 continue
 
             print(f"Adding movie strip: {filepath}")
-            sequence = sequence_editor.sequences.new_movie(
+            strip = sequence_editor.strips.new_movie(
                 name=filepath.name,
                 filepath=filepath.as_posix(),
                 channel=self.channel,
@@ -105,13 +111,13 @@ class RENDERSELECTEDSTRIPS_OT_AddMovieStrips(Operator, ImportHelper):
                 fit_method="FIT" if self.use_fit else "ORIGINAL",
             )
             if self.import_audio:
-                sequence_editor.sequences.new_sound(
+                sequence_editor.strips.new_sound(
                     name="audio",
                     filepath=filepath.as_posix(),
                     channel=self.channel + 1,
                     frame_start=current_frame,
                 )
-            current_frame = sequence.frame_final_end
+            current_frame = strip.frame_final_end
 
         if self.use_adjust_range:
             scene.frame_start = scene.frame_current
@@ -137,7 +143,7 @@ class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
     )
     files: files_prop
     filter_glob: StringProperty(
-        default=f"*{';*'.join(bpy.path.extensions_image)}",
+        default=f"*{';*'.join(bpy.path.extensions_image)}",  # type: ignore
         options={"HIDDEN"},
     )
     use_fit: use_fit_prop
@@ -154,7 +160,11 @@ class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
         Returns:
             bool: Whether the active scene has a sequencer or not
         """
-        return context.scene.sequence_editor
+        if TYPE_CHECKING:
+            scene: Scene
+
+        scene = context.scene
+        return bool(scene.sequence_editor)
 
     def execute(self, context: Context) -> set[OperatorReturnItems]:
         """
@@ -168,7 +178,8 @@ class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
         """
         if TYPE_CHECKING:
             file: OperatorFileListElement
-            sequence: ImageSequence
+            scene: Scene
+            strip: Strip
 
         scene = context.scene
         sequence_editor = scene.sequence_editor
@@ -180,14 +191,14 @@ class RENDERSELECTEDSTRIPS_OT_AddStillStrips(Operator, ImportHelper):
                 continue
 
             print(f"Adding as still: {filepath}")
-            sequence = sequence_editor.sequences.new_image(
+            strip = sequence_editor.strips.new_image(
                 name=filepath.name,
                 filepath=filepath.as_posix(),
                 channel=self.channel,
                 frame_start=current_frame,
                 fit_method="FIT" if self.use_fit else "ORIGINAL",
             )
-            sequence.frame_final_duration = self.duration
+            strip.frame_final_duration = self.duration
             current_frame += self.duration
 
         if self.use_adjust_range:
@@ -217,10 +228,14 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
         Returns:
             bool: Whether strips are selected or not
         """
-        if context.area.ui_type != "SEQUENCE_EDITOR":
+        if TYPE_CHECKING:
+            area: Area
+
+        area = context.area
+        if area.ui_type != "SEQUENCE_EDITOR":
             return False
 
-        return bool(context.selected_sequences)
+        return bool(context.selected_strips)
 
     def invoke(self, context: Context, event: Event) -> set[OperatorReturnItems]:
         """
@@ -233,7 +248,11 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
         Returns:
             set[OperatorReturnItems]
         """
-        context.window_manager.fileselect_add(self)
+        if TYPE_CHECKING:
+            wm: WindowManager
+
+        wm = context.window_manager
+        wm.fileselect_add(self)
 
         return {"RUNNING_MODAL"}
 
@@ -247,6 +266,9 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
         Returns:
             set[OperatorReturnItems]
         """
+        if TYPE_CHECKING:
+            scene: Scene
+
         scene = context.scene
 
         # Backup
@@ -254,11 +276,13 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
         frame_start_backup = scene.frame_start
         filepath_backup = scene.render.filepath
 
+        strips = context.selected_strips
+        if strips is None:
+            self.report({"ERROR"}, "No strips selected")
+            return {"FINISHED"}
+
         # Render sequences
-        utils.render_sequences(
-            sequences=context.selected_sequences,
-            directory=self.directory,
-        )
+        utils.render_strips(strips, self.directory)
 
         # Restore
         scene.frame_end = frame_end_backup
@@ -266,9 +290,6 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
         scene.render.filepath = filepath_backup
 
         # Report
-        self.report(
-            {"INFO"},
-            f"Finished rendering {len(context.selected_sequences)} strips",
-        )
+        self.report({"INFO"}, f"Finished rendering {len(strips)} strips")
 
         return {"FINISHED"}
