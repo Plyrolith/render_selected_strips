@@ -15,6 +15,7 @@ def add_strips(self: Panel, context: Context):
         context (Context)
     """
     layout = self.layout
+    layout.operator_context = "INVOKE_DEFAULT"
     layout.separator()
     layout.operator(
         operator=ops.RENDERSELECTEDSTRIPS_OT_AddStillStrips.bl_idname,
@@ -36,8 +37,8 @@ def render_selected_strips(self: Panel, context: Context):
         context (Context)
     """
     layout = self.layout
+    layout.operator_context = "INVOKE_DEFAULT"
     layout.separator()
-
     layout.operator(
         operator=ops.RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips.bl_idname,
         icon="RENDER_ANIMATION",
