@@ -10,5 +10,7 @@
     "reportOptionalMemberAccess": "none",
     "reportRedeclaration": "none"
   },
-  "python.analysis.typeCheckingMode": "standard"
+  "python.analysis.typeCheckingMode": "standard",
+  "python-envs.defaultEnvManager": "ms-python.python:poetry",
+  "python-envs.defaultPackageManager": "ms-python.python:poetry"
 }
