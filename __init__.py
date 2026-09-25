@@ -18,10 +18,10 @@ def register():
         bpy.utils.register_class(cls)
 
     # Add buttons to add menu
-    bpy.types.SEQUENCER_MT_add.append(draw.add_strips)
+    bpy.types.SEQUENCER_MT_add.append(draw.add_strips)  # type: ignore
 
-    # Add button to strip menu
-    bpy.types.SEQUENCER_MT_strip.append(draw.render_selected_strips)
+    # Add button to view menu
+    bpy.types.SEQUENCER_MT_view.append(draw.render_selected_strips)  # type: ignore
 
 
 def unregister():
@@ -32,8 +32,8 @@ def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
 
-    # Remove button from strip menu
-    bpy.types.SEQUENCER_MT_strip.remove(draw.render_selected_strips)
+    # Remove button from view menu
+    bpy.types.SEQUENCER_MT_view.remove(draw.render_selected_strips)  # type: ignore
 
     # Remove buttons from add menu
-    bpy.types.SEQUENCER_MT_add.remove(draw.add_strips)
+    bpy.types.SEQUENCER_MT_add.remove(draw.add_strips)  # type: ignore
