@@ -11,7 +11,7 @@ Blender add-on for quickly rendering selected sequencer strips.
 > This operator renders a video for _every_ selected strip.
 > E.g. select **only** video strips for any given section, **not** their audio strips.
 
-- Open the _Strip_ menu and select the _Render Selected Strips_ operator at the bottom
+- Open the _View_ menu and select the _Render Selected Strips_ operator at the bottom
 - Navigate to your destination folder
 - Confirm
 
