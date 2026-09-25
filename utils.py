@@ -3,8 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from bpy.types import Scene, Strip
 
 from pathlib import Path
@@ -25,55 +23,61 @@ FFMPEG_EXTENSIONS_MAP = {
 }
 
 
-def render_strips(strips: Sequence[Strip], directory: Path | str | None = None):
+def render_strip(
+    strip: Strip,
+    directory: Path | str | None = None,
+    modal: bool = False,
+):
     """
-    Render given sequence stips using their scene's render settings and their names as
+    Render given sequence stip using its scene's render settings and its name as
     file names.
 
     Args:
-        strips (list[Strip]): Strips to render
-        directory (Path | str): Destination folder, scene output if none is given
+        strip (Strip): Strip to render
+        directory (Path | str): Destination folder
+        modal (bool): Start render operator in modal mode
     """
     if TYPE_CHECKING:
         scene: Scene
 
-    # Generate directory path
-    scene = bpy.context.scene
-    if directory is None:
-        directory = Path(scene.render.filepath).with_suffix("")
+    scene = strip.id_data.original  # type: ignore
+
+    # Generate destination directory path
+    if directory:
+        dst_dir = Path(directory)
     else:
-        directory = Path(directory)
+        dst_dir = Path(scene.render.filepath).with_suffix("")
 
-    # Loop through sequence strips
-    for strip in strips:
-        scene = strip.id_data.original  # type: ignore
+    # FFMPEG video
+    file_format = scene.render.image_settings.file_format
+    if file_format == "FFMPEG":
+        suffix = FFMPEG_EXTENSIONS_MAP[scene.render.ffmpeg.format]
+        filepath = Path(dst_dir, strip.name).with_suffix(suffix)
 
-        # FFMPEG video
-        file_format = scene.render.image_settings.file_format
-        if file_format == "FFMPEG":
-            suffix = FFMPEG_EXTENSIONS_MAP[scene.render.ffmpeg.format]
-            filepath = Path(directory, strip.name).with_suffix(suffix)
+    # AVI video
+    elif file_format in {"AVI_JPEG", "AVI_RAW"}:
+        filepath = Path(dst_dir, strip.name).with_suffix(".avi")
 
-        # AVI video
-        elif file_format in {"AVI_JPEG", "AVI_RAW"}:
-            filepath = Path(directory, strip.name).with_suffix(".avi")
+    # Image sequences
+    else:
+        filepath = Path(dst_dir, strip.name, strip.name + "_")
 
-        # Image sequences
-        else:
-            filepath = Path(directory, strip.name, strip.name + "_")
+    # Create parent folder
+    filepath.parent.mkdir(parents=True, exist_ok=True)
 
-        # Create parent folder
-        filepath.parent.mkdir(parents=True, exist_ok=True)
+    # Set output path
+    filepath_str = filepath.as_posix()
+    scene.render.filepath = filepath_str
+    print(f"Rendering {scene.name} {strip.name} to {filepath_str}")
 
-        # Set output path
-        filepath = filepath.as_posix()
-        scene.render.filepath = filepath
-        print(f"Rendering {strip.name} to {filepath}")
-
-        # Set scene range
-        scene.frame_end = strip.frame_final_end - 1
-        scene.frame_start = strip.frame_final_start
-
-        # Render
-        scene.render.use_sequencer = True
-        bpy.ops.render.render(animation=True, use_viewport=False, scene=scene.name)
+    # Render
+    scene.render.use_sequencer = True
+    bpy.ops.render.render(
+        "INVOKE_DEFAULT" if modal else "EXEC_DEFAULT",
+        animation=True,
+        use_viewport=False,
+        use_sequencer_scene=True,
+        scene=scene.name,
+        frame_start=strip.frame_final_start,
+        frame_end=strip.frame_final_end - 1,
+    )

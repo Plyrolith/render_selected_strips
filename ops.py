@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from bpy.stub_internal.rna_enums import OperatorReturnItems
-    from bpy.types import Area, Context, Event, Scene, Strip, WindowManager
+    from bpy.types import Area, Context, Event, Preferences, Scene, WindowManager
 
 from pathlib import Path
 
 import bpy
 from bpy.props import BoolProperty, CollectionProperty, IntProperty, StringProperty
-from bpy.types import Operator, OperatorFileListElement
+from bpy.types import Operator, OperatorFileListElement, Strip, Timer
 from bpy_extras.io_utils import ImportHelper
 
 from . import utils
@@ -215,7 +215,30 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
     bl_label = "Render Selected Strips"
     bl_options = {"REGISTER"}
 
-    directory: bpy.props.StringProperty(name="Directory", subtype="DIR_PATH")
+    directory: StringProperty(name="Directory", subtype="DIR_PATH")
+
+    _filepath: str
+    _frame_current: int
+    _is_cancelled: bool = False
+    _is_modal: bool = False
+    _is_rendering: bool = False
+    _nb_strips: int
+    _render_display_type: Literal["NONE", "SCREEN", "AREA", "WINDOW"] = "WINDOW"
+    _strips: list[Strip]
+    _timer: Timer | None = None
+
+    def _render_cancel_handler(self, scene: Scene, _=None):
+        """
+        Mark if rendering was cancelled.
+        """
+        self._is_cancelled = True
+        self._is_rendering = False
+
+    def _render_complete_handler(self, scene: Scene, _=None):
+        """
+        Mark if rendering has completed.
+        """
+        self._is_rendering = False
 
     @classmethod
     def poll(cls, context: Context) -> bool:
@@ -239,7 +262,7 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
 
     def invoke(self, context: Context, event: Event) -> set[OperatorReturnItems]:
         """
-        Start folder selection.
+        Start folder selection, store render display type and mark modal execution.
 
         Args:
             context (Context)
@@ -249,12 +272,72 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
             set[OperatorReturnItems]
         """
         if TYPE_CHECKING:
+            prefs: Preferences
             wm: WindowManager
+
+        prefs = context.preferences
+        self._render_display_type = prefs.view.render_display_type
+        self._is_modal = True
 
         wm = context.window_manager
         wm.fileselect_add(self)
 
         return {"RUNNING_MODAL"}
+
+    def render_next_strip(self, context: Context):
+        """
+        Start rendering the next strip and remove it from the queue.
+
+        Args:
+            context (Context)
+        """
+        if TYPE_CHECKING:
+            scene: Scene
+
+        strip = self._strips.pop(0)
+
+        # Report new render task
+        nb = self._nb_strips - len(self._strips)
+        self.report({"INFO"}, f"Rendering strip {nb}/{self._nb_strips}: {strip.name}")
+
+        # Set scene frame to avoid jumping between renders
+        scene = context.scene
+        scene.frame_current = strip.frame_final_start
+
+        # Start modal render
+        self._is_rendering = True
+        utils.render_strip(strip, self.directory, modal=True)
+
+    def modal(self, context: Context, event: Event) -> set[OperatorReturnItems]:
+        """
+        Handle modal events: Cancelled, rendering, next strip & finished.
+
+        Args:
+            context (Context)
+            event (Event)
+
+        Returns:
+            set[OperatorReturnItems]
+        """
+        # Has been cancelled
+        if self._is_cancelled:
+            self.finish(context)
+            self.report({"WARNING"}, "Cancelled rendering strips")
+            return {"CANCELLED"}
+
+        # Check if current render is still running
+        elif self._is_rendering:
+            return {"RUNNING_MODAL"}
+
+        # Start rendering next strip
+        elif self._strips:
+            self.render_next_strip(context)
+            return {"RUNNING_MODAL"}
+
+        # Render complete
+        self.finish(context)
+        self.report({"INFO"}, f"Finished rendering {self._nb_strips} strips")
+        return {"FINISHED"}
 
     def execute(self, context: Context) -> set[OperatorReturnItems]:
         """
@@ -267,29 +350,85 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
             set[OperatorReturnItems]
         """
         if TYPE_CHECKING:
+            prefs: Preferences
             scene: Scene
+            wm: WindowManager
 
-        scene = context.scene
-
-        # Backup
-        frame_end_backup = scene.frame_end
-        frame_start_backup = scene.frame_start
-        filepath_backup = scene.render.filepath
-
-        strips = context.selected_strips
-        if strips is None:
+        # Check strips
+        if context.selected_strips:
+            strips = list(context.selected_strips)
+            strips.sort(key=lambda s: s.frame_start)
+        else:
             self.report({"ERROR"}, "No strips selected")
             return {"FINISHED"}
 
-        # Render sequences
-        utils.render_strips(strips, self.directory)
+        # Backup scene values
+        scene = context.scene
+        self._frame_current = scene.frame_current
+        self._filepath = scene.render.filepath
 
-        # Restore
-        scene.frame_end = frame_end_backup
-        scene.frame_start = frame_start_backup
-        scene.render.filepath = filepath_backup
+        # If not invoked as modal, render directly and finish
+        if not self._is_modal:
+            for strip in strips:
+                utils.render_strip(strip, self.directory, modal=False)
+                scene.render.filepath = self._filepath
+                scene.frame_current = self._frame_current
+            return {"FINISHED"}
 
-        # Report
-        self.report({"INFO"}, f"Finished rendering {len(strips)} strips")
+        # Keep UI when rendering
+        prefs = context.preferences
+        prefs.view.render_display_type = "NONE"
 
-        return {"FINISHED"}
+        # Add render handlers
+        if self._render_cancel_handler not in bpy.app.handlers.render_cancel:
+            bpy.app.handlers.render_cancel.append(self._render_cancel_handler)
+        if self._render_complete_handler not in bpy.app.handlers.render_complete:
+            bpy.app.handlers.render_complete.append(self._render_complete_handler)
+
+        # Add modal handler
+        wm = context.window_manager
+        wm.modal_handler_add(self)
+
+        # Add timer
+        self._timer = wm.event_timer_add(0.1)
+
+        # Queue strips and start rendering first one
+        self._strips = list(strips)
+        self._nb_strips = len(strips)
+        self.render_next_strip(context)
+
+        return {"RUNNING_MODAL"}
+
+    def finish(self, context: Context):
+        """
+        Remove timer and render handlers, restore backups.
+
+        Args:
+            context (Context)
+        """
+        if TYPE_CHECKING:
+            prefs: Preferences
+            scene: Scene
+            wm: WindowManager
+
+        self._strips.clear()
+
+        # Remove timer
+        if self._timer:
+            wm = context.window_manager
+            wm.event_timer_remove(self._timer)
+
+        # Remove handlers
+        if self._render_cancel_handler in bpy.app.handlers.render_cancel:
+            bpy.app.handlers.render_cancel.remove(self._render_cancel_handler)
+        if self._render_complete_handler in bpy.app.handlers.render_complete:
+            bpy.app.handlers.render_complete.remove(self._render_complete_handler)
+
+        # Restore backed up scene data
+        scene = context.scene
+        scene.render.filepath = self._filepath
+        scene.frame_current = self._frame_current
+
+        # Restore render view settings
+        prefs = context.preferences
+        prefs.view.render_display_type = self._render_display_type
