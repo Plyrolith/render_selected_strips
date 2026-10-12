@@ -227,6 +227,8 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
 
     _filepath: str
     _frame_current: int
+    _frame_end: int
+    _frame_start: int
     _is_cancelled: bool = False
     _is_modal: bool = False
     _nb_strips: int
@@ -369,6 +371,8 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
         # Backup scene values
         scene = context.scene
         self._frame_current = scene.frame_current
+        self._frame_end = scene.frame_end
+        self._frame_start = scene.frame_start
         self._filepath = scene.render.filepath
 
         # If not invoked as modal, render directly and finish
@@ -376,6 +380,8 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
             for strip in strips:
                 utils.render_strip(strip, self.directory, modal=False)
                 scene.render.filepath = self._filepath
+                scene.frame_end = self._frame_end
+                scene.frame_start = self._frame_start
                 scene.frame_current = self._frame_current
             return {"FINISHED"}
 
@@ -427,6 +433,8 @@ class RENDERSELECTEDSTRIPS_OT_RenderSelectedStrips(Operator):
         # Restore backed up scene data
         scene = context.scene
         scene.render.filepath = self._filepath
+        scene.frame_end = self._frame_end
+        scene.frame_start = self._frame_start
         scene.frame_current = self._frame_current
 
         # Restore render view settings

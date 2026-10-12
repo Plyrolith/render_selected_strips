@@ -72,12 +72,12 @@ def render_strip(
 
     # Render
     scene.render.use_sequencer = True
+    scene.frame_end = strip.right_handle - 1
+    scene.frame_start = strip.left_handle
     bpy.ops.render.render(
         "INVOKE_DEFAULT" if modal else "EXEC_DEFAULT",
         animation=True,
         use_viewport=False,
         use_sequencer_scene=True,
         scene=scene.name,
-        frame_start=strip.frame_final_start,
-        frame_end=strip.frame_final_end - 1,
     )
